@@ -516,13 +516,6 @@ function buildPrompt() {
 // ========================
 
 async function getAiTips() {
-    var apiKey = geminiApiKey.value.trim() || localStorage.getItem("geminiApiKey");
-
-    if (!apiKey) {
-        spendingTips.innerHTML = '<div class="ai-error">🔑 Please enter your Gemini API Key in the field above and click Save.</div>';
-        return;
-    }
-
     var monthExpenses = getCurrentMonthExpenses();
 
     if (monthExpenses.length === 0) {
@@ -536,30 +529,53 @@ async function getAiTips() {
     spendingTips.innerHTML = '<div class="ai-loading"><span class="spinner"></span>Gemini is analyzing your expenses...</div>';
 
     var prompt = buildPrompt();
-    var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + encodeURIComponent(apiKey);
 
-    var requestBody = {
-        contents: [
-            {
-                parts: [
-                    { text: prompt }
-                ]
-            }
-        ]
-    };
-
+    // 1. Try Vercel Serverless Function first (/api/advice)
     try {
-        var response = await fetch(url, {
+        var response = await fetch("/api/advice", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify({ prompt: prompt })
         });
 
-        var data = await response.json();
+        if (response.ok) {
+            var data = await response.json();
+            if (data.candidates && data.candidates[0]) {
+                var aiText = data.candidates[0].content.parts[0].text;
+                spendingTips.innerHTML = '<div class="tip-card">' + formatAiResponse(aiText) + '</div>';
+                resetAiButton();
+                return;
+            }
+        }
+    } catch (vercelError) {
+        console.log("Vercel route /api/advice not reachable, trying direct local key...", vercelError);
+    }
 
-        if (!response.ok) {
-            var errorMsg = (data.error && data.error.message)
-                ? data.error.message
+    // 2. Fallback to Local API Key if running locally without Vercel backend
+    var localKey = (geminiApiKey ? geminiApiKey.value.trim() : "") || localStorage.getItem("geminiApiKey");
+
+    if (!localKey) {
+        spendingTips.innerHTML = '<div class="ai-error">🔑 Gemini API Key is missing. Add GEMINI_API_KEY in Vercel Environment Variables, or save a local key above for testing.</div>';
+        resetAiButton();
+        return;
+    }
+
+    var directUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + encodeURIComponent(localKey);
+
+    try {
+        var directResponse = await fetch(directUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+            })
+        });
+
+        var directData = await directResponse.json();
+
+        if (!directResponse.ok) {
+            var errorMsg = (directData.error && directData.error.message)
+                ? directData.error.message
                 : "API request failed.";
 
             spendingTips.innerHTML = '<div class="ai-error">❌ ' + errorMsg + '</div>';
@@ -567,8 +583,8 @@ async function getAiTips() {
             return;
         }
 
-        var aiText = data.candidates[0].content.parts[0].text;
-        spendingTips.innerHTML = '<div class="tip-card">' + formatAiResponse(aiText) + '</div>';
+        var directAiText = directData.candidates[0].content.parts[0].text;
+        spendingTips.innerHTML = '<div class="tip-card">' + formatAiResponse(directAiText) + '</div>';
 
     } catch (error) {
         console.log("Gemini API error:", error);

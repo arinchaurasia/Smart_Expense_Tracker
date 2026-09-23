@@ -131,11 +131,24 @@ I kept it with localStorage for now because it works instantly without any setup
 
 ```
 Smart_Expense_Tracker/
+├── api/
+│   └── advice.js  → Vercel Serverless Function (secure Gemini proxy)
 ├── index.html     → Page structure (form, cards, sections)
 ├── style.css      → All styling (gradient, cards, responsive)
 ├── script.js      → All logic (CRUD, summary, Gemini API)
 └── README.md      → This file
 ```
+
+
+## How to Deploy on Vercel (Secure API Key)
+
+1. Import your GitHub repository into **[Vercel](https://vercel.com)**.
+2. In **Project Settings → Environment Variables**:
+   - Key: `GEMINI_API_KEY`
+   - Value: `Your_Actual_Gemini_API_Key`
+3. Click **Deploy**.
+
+Vercel automatically handles calls to `/api/advice` via the serverless function, keeping your Gemini API key hidden and 100% secure!
 
 
 ## Tech Stack
