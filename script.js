@@ -470,12 +470,11 @@ function buildPrompt() {
         prompt += "- " + categories[i] + ": ₹" + catTotals[categories[i]] + "\n";
     }
 
-    prompt += "\nBased on this data, provide:\n"
-        + "1. A brief analysis of my spending pattern (2 lines)\n"
-        + "2. 3 specific actionable tips to save money\n"
-        + "3. A suggested daily spending limit for the rest of the month\n"
-        + "4. One motivational line about saving\n\n"
-        + "Keep the response short, friendly and use ₹ for currency. Use emojis.";
+    prompt += "\nProvide an ultra-concise 3-bullet spending summary:\n"
+        + "• 💡 **Key Insight**: 1 sentence on top spending area.\n"
+        + "• 🎯 **Daily Limit**: Recommended max spend/day for the remaining " + daysLeft + " days.\n"
+        + "• ⚡ **Top Action**: 1 direct tip to save money immediately.\n\n"
+        + "Strict rules: No filler intro or outro, exactly 3 bullet points, use ₹ for currency, keep under 60 words total.";
 
     return prompt;
 }
