@@ -1,15 +1,6 @@
-/*
-    Smart Expense Tracker
-    - Firebase Firestore for storing expenses
-    - Gemini API for AI spending advice
-    - localStorage for budget settings
-*/
+/* BudgetMind: Smart Expense Tracker Logic */
 
-
-// ========================
-//  Firebase Setup
-// ========================
-
+/* Firebase Setup & Configuration */
 var firebaseConfig = {
     apiKey: "AIzaSyDr8VIsKWH22QPz2u-qPToW5acqS2UcIqU",
     authDomain: "smart-expense-tracker-fbd0a.firebaseapp.com",
@@ -21,99 +12,112 @@ var firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 var db = firebase.firestore();
+var auth = firebase.auth();
+var currentUser = null;
 
+/* DOM Element Selectors */
+var authLockScreen       = document.getElementById("authLockScreen");
+var googleSignInGateBtn  = document.getElementById("googleSignInGateBtn");
+var mainApp              = document.getElementById("mainApp");
+var userProfile          = document.getElementById("userProfile");
+var userAvatar           = document.getElementById("userAvatar");
+var userName             = document.getElementById("userName");
+var signOutBtn           = document.getElementById("signOutBtn");
 
-// ========================
-//  HTML Elements
-// ========================
+var expenseName          = document.getElementById("expenseName");
+var expenseAmount        = document.getElementById("expenseAmount");
+var expenseCategory      = document.getElementById("expenseCategory");
+var addExpenseButton     = document.getElementById("addExpenseButton");
 
-// Form
-var expenseName      = document.getElementById("expenseName");
-var expenseAmount    = document.getElementById("expenseAmount");
-var expenseCategory  = document.getElementById("expenseCategory");
-var addExpenseButton = document.getElementById("addExpenseButton");
+var expenseList          = document.getElementById("expenseList");
+var totalExpense         = document.getElementById("totalExpense");
+var totalCount           = document.getElementById("totalCount");
+var monthlyTotal         = document.getElementById("monthlyTotal");
+var currentMonth         = document.getElementById("currentMonth");
+var categoryBreakdown    = document.getElementById("categoryBreakdown");
+var emptyMessage         = document.getElementById("emptyMessage");
+var filterCategory       = document.getElementById("filterCategory");
 
-// Display
-var expenseList       = document.getElementById("expenseList");
-var totalExpense      = document.getElementById("totalExpense");
-var totalCount        = document.getElementById("totalCount");
-var monthlyTotal      = document.getElementById("monthlyTotal");
-var currentMonth      = document.getElementById("currentMonth");
-var categoryBreakdown = document.getElementById("categoryBreakdown");
-var emptyMessage      = document.getElementById("emptyMessage");
+var monthlyBudget        = document.getElementById("monthlyBudget");
+var saveBudgetButton     = document.getElementById("saveBudgetButton");
+var budgetProgress       = document.getElementById("budgetProgress");
+var budgetSpent          = document.getElementById("budgetSpent");
+var budgetRemaining      = document.getElementById("budgetRemaining");
+var progressBarFill      = document.getElementById("progressBarFill");
+var budgetPercentage     = document.getElementById("budgetPercentage");
 
-// Filter
-var filterCategory = document.getElementById("filterCategory");
+var getAiTipsButton      = document.getElementById("getAiTipsButton");
+var spendingTips         = document.getElementById("spendingTips");
 
-// Budget
-var monthlyBudget    = document.getElementById("monthlyBudget");
-var saveBudgetButton = document.getElementById("saveBudgetButton");
-var budgetProgress   = document.getElementById("budgetProgress");
-var budgetSpent      = document.getElementById("budgetSpent");
-var budgetRemaining  = document.getElementById("budgetRemaining");
-var progressBarFill  = document.getElementById("progressBarFill");
-var budgetPercentage = document.getElementById("budgetPercentage");
+var billFileInput      = document.getElementById("billFileInput");
+var scanBillButton     = document.getElementById("scanBillButton");
+var billStatus         = document.getElementById("billStatus");
 
-// AI Tips
-var getAiTipsButton  = document.getElementById("getAiTipsButton");
-var spendingTips     = document.getElementById("spendingTips");
-
-// Bill & Document Scanner
-var billFileInput  = document.getElementById("billFileInput");
-var scanBillButton = document.getElementById("scanBillButton");
-var billStatus     = document.getElementById("billStatus");
-
-
-// ========================
-//  App Data
-// ========================
-
+/* Global Application State */
 var allExpenses = [];
-
-var monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-];
-
+var monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 var categoryColors = {
-    "Food":          "#e74c3c",
-    "Transport":     "#3498db",
-    "Shopping":      "#9b59b6",
-    "Education":     "#27ae60",
+    "Food": "#e74c3c",
+    "Transport": "#3498db",
+    "Shopping": "#9b59b6",
+    "Education": "#27ae60",
     "Entertainment": "#f39c12",
-    "Bills":         "#1abc9c",
-    "Other":         "#95a5a6"
+    "Bills": "#1abc9c",
+    "Other": "#95a5a6"
 };
 
-
-// ========================
-//  Event Listeners
-// ========================
-
+/* Attach Event Handlers */
+googleSignInGateBtn.addEventListener("click", signInWithGoogle);
+signOutBtn.addEventListener("click", signOutUser);
 addExpenseButton.addEventListener("click", addExpense);
 filterCategory.addEventListener("change", filterExpenses);
 saveBudgetButton.addEventListener("click", saveBudget);
 getAiTipsButton.addEventListener("click", getAiTips);
 scanBillButton.addEventListener("click", scanBillFile);
 
-
-// ========================
-//  Load Data on Page Open
-// ========================
-
-loadExpenses();
-loadBudget();
-
-
-// ========================
-//  Firebase: Load Expenses
-// ========================
-
-function loadExpenses() {
-    db.collection("expenses").get().then(function(snapshot) {
-
+/* Authentication Observer */
+auth.onAuthStateChanged(function(user) {
+    if (user) {
+        currentUser = user;
+        authLockScreen.style.display = "none";
+        mainApp.style.display = "block";
+        userProfile.style.display = "flex";
+        userAvatar.src = user.photoURL || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&q=80";
+        userName.innerText = user.displayName || user.email || "User";
+        loadExpenses();
+        loadBudget();
+    } else {
+        currentUser = null;
+        authLockScreen.style.display = "flex";
+        mainApp.style.display = "none";
+        userProfile.style.display = "none";
         allExpenses = [];
+    }
+});
 
+/* Google Sign In */
+function signInWithGoogle() {
+    var provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).catch(function(error) {
+        alert("Authentication failed: " + error.message);
+    });
+}
+
+/* Sign Out */
+function signOutUser() {
+    auth.signOut().then(function() {
+        allExpenses = [];
+    }).catch(function(error) {
+        console.error("Sign out error:", error);
+    });
+}
+
+/* Load User Expenses from Firestore */
+function loadExpenses() {
+    if (!currentUser) return;
+
+    db.collection("expenses").where("userId", "==", currentUser.uid).get().then(function(snapshot) {
+        allExpenses = [];
         snapshot.forEach(function(doc) {
             var expense = doc.data();
             expense.id = doc.id;
@@ -124,30 +128,30 @@ function loadExpenses() {
         displayExpenses(allExpenses);
         updateMonthlySummary();
         updateBudgetProgress();
-
     }).catch(function(error) {
-        console.log("Error loading expenses:", error);
+        console.error("Error loading expenses:", error);
     });
 }
 
-
-// ========================
-//  Firebase: Add Expense
-// ========================
-
+/* Add New Expense to Firestore */
 function addExpense() {
+    if (!currentUser) {
+        alert("Please sign in to add expenses.");
+        return;
+    }
+
     var name     = expenseName.value.trim();
     var amount   = Number(expenseAmount.value);
     var category = expenseCategory.value;
 
     if (!name || amount <= 0 || !category) {
-        alert("Please fill all fields with valid values.");
+        alert("Please enter a valid expense name, amount, and category.");
         return;
     }
 
     var now = new Date();
-
     var newExpense = {
+        userId:   currentUser.uid,
         name:     name,
         amount:   amount,
         category: category,
@@ -156,97 +160,66 @@ function addExpense() {
         year:     now.getFullYear()
     };
 
-    // Save to Firebase
     db.collection("expenses").add(newExpense).then(function() {
-
-        // Clear form
         expenseName.value     = "";
         expenseAmount.value   = "";
         expenseCategory.value = "";
-
-        // Reload expenses from Firebase
         loadExpenses();
-
     }).catch(function(error) {
-        console.log("Error adding expense:", error);
-        alert("Failed to add expense. Check console.");
+        console.error("Error adding expense:", error);
+        alert("Failed to add expense. Please try again.");
     });
 }
 
-
-// ========================
-//  Firebase: Delete Expense
-// ========================
-
+/* Delete Expense from Firestore */
 function deleteExpense(id) {
-    if (!confirm("Delete this expense?")) {
-        return;
-    }
+    if (!confirm("Are you sure you want to delete this expense?")) return;
 
     db.collection("expenses").doc(id).delete().then(function() {
         loadExpenses();
     }).catch(function(error) {
-        console.log("Error deleting expense:", error);
+        console.error("Error deleting expense:", error);
         alert("Failed to delete expense.");
     });
 }
 
-
-// ========================
-//  Budget (localStorage)
-// ========================
-
+/* User Budget Management */
 function loadBudget() {
-    var saved = localStorage.getItem("monthlyBudget");
-    if (saved) {
-        monthlyBudget.value = saved;
-    }
+    if (!currentUser) return;
+    var saved = localStorage.getItem("monthlyBudget_" + currentUser.uid);
+    monthlyBudget.value = saved ? saved : "";
 }
 
 function saveBudget() {
+    if (!currentUser) return;
     var budget = Number(monthlyBudget.value);
-
     if (budget <= 0) {
         alert("Please enter a valid budget amount.");
         return;
     }
 
-    localStorage.setItem("monthlyBudget", budget);
-    alert("Budget saved! ₹" + budget + " per month.");
+    localStorage.setItem("monthlyBudget_" + currentUser.uid, budget);
+    alert("Monthly budget saved: ₹" + budget);
     updateBudgetProgress();
 }
 
-
-// ========================
-//  Filter by Category
-// ========================
-
+/* Expense Category Filtering */
 function filterExpenses() {
     var selected = filterCategory.value;
-
     if (selected === "All") {
         displayExpenses(allExpenses);
         return;
     }
 
-    var filtered = [];
-    for (var i = 0; i < allExpenses.length; i++) {
-        if (allExpenses[i].category === selected) {
-            filtered.push(allExpenses[i]);
-        }
-    }
-
+    var filtered = allExpenses.filter(function(item) {
+        return item.category === selected;
+    });
     displayExpenses(filtered);
 }
 
-
-// ========================
-//  Display Expense List
-// ========================
-
+/* Render Expense Cards */
 function displayExpenses(expenses) {
     expenseList.innerHTML = "";
-
     var total = 0;
     for (var i = 0; i < expenses.length; i++) {
         total += expenses[i].amount;
@@ -261,33 +234,22 @@ function displayExpenses(expenses) {
     }
 }
 
-
-// ========================
-//  Create Single Expense Card
-// ========================
-
+/* Create Expense DOM Node */
 function createExpenseCard(expense) {
-
     var item = document.createElement("div");
     item.className = "expense-item";
 
-    // Left side — name & details
     var info = document.createElement("div");
     info.className = "expense-info";
-
     var name = document.createElement("h3");
     name.innerText = expense.name;
-
     var details = document.createElement("p");
     details.innerHTML = '<span class="category-badge">' + expense.category + '</span>' + expense.date;
-
     info.appendChild(name);
     info.appendChild(details);
 
-    // Right side — amount & delete
     var right = document.createElement("div");
     right.className = "expense-right";
-
     var amount = document.createElement("span");
     amount.className = "expense-amount";
     amount.innerText = "₹" + expense.amount;
@@ -295,68 +257,43 @@ function createExpenseCard(expense) {
     var delBtn = document.createElement("button");
     delBtn.innerText = "Delete";
     delBtn.className = "delete-button";
-
-    delBtn.addEventListener("click", (function(id) {
-        return function() {
-            deleteExpense(id);
-        };
-    })(expense.id));
+    delBtn.addEventListener("click", function() {
+        deleteExpense(expense.id);
+    });
 
     right.appendChild(amount);
     right.appendChild(delBtn);
-
     item.appendChild(info);
     item.appendChild(right);
     expenseList.appendChild(item);
 }
 
-
-// ========================
-//  Helper: This Month's Expenses
-// ========================
-
+/* Helper Functions */
 function getCurrentMonthExpenses() {
     var now       = new Date();
     var thisMonth = now.getMonth();
     var thisYear  = now.getFullYear();
-    var result    = [];
 
-    for (var i = 0; i < allExpenses.length; i++) {
-        if (allExpenses[i].month === thisMonth && allExpenses[i].year === thisYear) {
-            result.push(allExpenses[i]);
-        }
-    }
-
-    return result;
+    return allExpenses.filter(function(item) {
+        return item.month === thisMonth && item.year === thisYear;
+    });
 }
-
-
-// ========================
-//  Helper: Category Totals
-// ========================
 
 function getCategoryTotals(expenses) {
     var totals = {};
-
     for (var i = 0; i < expenses.length; i++) {
-        var cat = expenses[i].category;
+        var cat = expenses[i].category || "Other";
         totals[cat] = (totals[cat] || 0) + expenses[i].amount;
     }
-
     return totals;
 }
 
-
-// ========================
-//  Monthly Summary
-// ========================
-
+/* Render Monthly Breakdown */
 function updateMonthlySummary() {
     var now = new Date();
     currentMonth.innerText = monthNames[now.getMonth()] + " " + now.getFullYear();
 
     var monthExpenses = getCurrentMonthExpenses();
-
     var monthTotal = 0;
     for (var i = 0; i < monthExpenses.length; i++) {
         monthTotal += monthExpenses[i].amount;
@@ -364,7 +301,7 @@ function updateMonthlySummary() {
     monthlyTotal.innerText = "₹" + monthTotal;
 
     if (monthExpenses.length === 0) {
-        categoryBreakdown.innerHTML = '<p class="empty-message">No expenses this month yet.</p>';
+        categoryBreakdown.innerHTML = '<p class="empty-message">No expenses recorded for this month.</p>';
         return;
     }
 
@@ -376,7 +313,7 @@ function updateMonthlySummary() {
         var catName   = categories[i];
         var catAmount = catTotals[catName];
         var percent   = Math.round((catAmount / monthTotal) * 100);
-        var color     = categoryColors[catName] || "#667eea";
+        var color     = categoryColors[catName] || "#95a5a6";
 
         html += '<div class="category-row">'
              +    '<div style="flex: 1;">'
@@ -397,14 +334,11 @@ function updateMonthlySummary() {
     categoryBreakdown.innerHTML = html;
 }
 
-
-// ========================
-//  Budget Progress Bar
-// ========================
-
+/* Budget Progress Indicator */
 function updateBudgetProgress() {
-    var budget = Number(localStorage.getItem("monthlyBudget"));
+    if (!currentUser) return;
 
+    var budget = Number(localStorage.getItem("monthlyBudget_" + currentUser.uid));
     if (!budget || budget <= 0) {
         budgetProgress.style.display = "none";
         return;
@@ -444,14 +378,10 @@ function updateBudgetProgress() {
     }
 }
 
-
-// ========================
-//  Gemini AI — Build Prompt
-// ========================
-
+/* Build Gemini AI Prompt */
 function buildPrompt() {
     var monthExpenses = getCurrentMonthExpenses();
-    var budget = Number(localStorage.getItem("monthlyBudget")) || 0;
+    var budget = currentUser ? (Number(localStorage.getItem("monthlyBudget_" + currentUser.uid)) || 0) : 0;
 
     var monthTotal = 0;
     for (var i = 0; i < monthExpenses.length; i++) {
@@ -465,7 +395,7 @@ function buildPrompt() {
     var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     var daysLeft    = daysInMonth - now.getDate();
 
-    var prompt = "You are a personal finance advisor. Analyze my monthly expenses and give me a smart spending plan.\n\n"
+    var prompt = "You are an expert financial advisor for BudgetMind. Analyze my monthly expenses and give me a smart spending plan.\n\n"
         + "Month: " + monthNames[now.getMonth()] + " " + now.getFullYear() + "\n"
         + "Days left in month: " + daysLeft + "\n"
         + "Monthly Budget: ₹" + (budget > 0 ? budget : "Not set") + "\n"
@@ -485,11 +415,7 @@ function buildPrompt() {
     return prompt;
 }
 
-
-// ========================
-//  Gemini AI — Get Tips
-// ========================
-
+/* Request AI Advice */
 async function getAiTips() {
     var monthExpenses = getCurrentMonthExpenses();
 
@@ -498,10 +424,9 @@ async function getAiTips() {
         return;
     }
 
-    // Show loading
     getAiTipsButton.disabled = true;
     getAiTipsButton.innerText = "Analyzing...";
-    spendingTips.innerHTML = '<div class="ai-loading"><span class="spinner"></span>Gemini is analyzing your expenses...</div>';
+    spendingTips.innerHTML = '<div class="ai-loading"><span class="spinner"></span>Gemini is analyzing your spending...</div>';
 
     var prompt = buildPrompt();
 
@@ -514,11 +439,8 @@ async function getAiTips() {
 
         var data = await response.json();
 
-        if (!response.ok) {
-            var errorMsg = (data && data.error)
-                ? data.error
-                : "Failed to get AI advice.";
-
+        if (!response.ok || !data.candidates || !data.candidates[0]) {
+            var errorMsg = (data && data.error) ? data.error : "Failed to get AI advice.";
             spendingTips.innerHTML = '<div class="ai-error">❌ ' + errorMsg + '</div>';
             resetAiButton();
             return;
@@ -528,7 +450,7 @@ async function getAiTips() {
         spendingTips.innerHTML = '<div class="tip-card">' + formatAiResponse(aiText) + '</div>';
 
     } catch (error) {
-        console.log("Error fetching AI advice:", error);
+        console.error("Error fetching AI advice:", error);
         spendingTips.innerHTML = '<div class="ai-error">❌ Failed to connect to AI service.</div>';
     }
 
@@ -540,11 +462,6 @@ function resetAiButton() {
     getAiTipsButton.innerText = "✨ Get AI Advice";
 }
 
-
-// ========================
-//  Format AI Response
-// ========================
-
 function formatAiResponse(text) {
     text = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
     text = text.replace(/###\s?(.*)/g, "<strong>$1</strong>");
@@ -553,57 +470,17 @@ function formatAiResponse(text) {
     return text;
 }
 
-
-// ========================
-//  CSV Import & AI Auto-Categorization
-// ========================
-
-function autoCategorizeExpense(name, category) {
-    if (category && category.trim().length > 0) {
-        var catLower = category.trim().toLowerCase();
-        if (catLower.includes("food") || catLower.includes("dining")) return "Food";
-        if (catLower.includes("trans") || catLower.includes("travel") || catLower.includes("ride")) return "Transport";
-        if (catLower.includes("shop") || catLower.includes("store")) return "Shopping";
-        if (catLower.includes("edu") || catLower.includes("book") || catLower.includes("course")) return "Education";
-        if (catLower.includes("ent") || catLower.includes("movie") || catLower.includes("music")) return "Entertainment";
-        if (catLower.includes("bill") || catLower.includes("util") || catLower.includes("recharge")) return "Bills";
-    }
-
-    var lower = name.toLowerCase();
-
-    // Food
-    if (/zomato|swiggy|burger|pizza|mcdonalds|kfc|starbucks|cafe|restaurant|lunch|dinner|breakfast|food|grocery|supermarket|bakery|dunkin|dominos/i.test(lower)) {
-        return "Food";
-    }
-    // Transport
-    if (/uber|ola|rapido|cab|taxi|metro|bus|train|flight|airline|petrol|fuel|shell|toll|parking|transport|auto|railway/i.test(lower)) {
-        return "Transport";
-    }
-    // Shopping
-    if (/amazon|flipkart|myntra|zara|h&m|uniqlo|clothes|shoes|apparel|electronics|mall|shopping|nike|adidas/i.test(lower)) {
-        return "Shopping";
-    }
-    // Education
-    if (/udemy|coursera|edx|book|tuition|exam|college|school|fee|stationery|course|class|academy/i.test(lower)) {
-        return "Education";
-    }
-    // Entertainment
-    if (/netflix|spotify|prime|hotstar|movie|cinema|inox|pvr|game|playstation|xbox|steam|concert|event|ticket/i.test(lower)) {
-        return "Entertainment";
-    }
-    // Bills
-    if (/electricity|power|wifi|broadband|internet|recharge|jio|airtel|vi|vodafone|water|rent|gas|bill|maintenance|lic|insurance|premium/i.test(lower)) {
-        return "Bills";
-    }
-
-    return "Other";
-}
-
+/* Bill Document Scanner with Gemini AI */
 async function scanBillFile() {
+    if (!currentUser) {
+        alert("Please sign in to scan bills.");
+        return;
+    }
+
     var file = billFileInput.files[0];
 
     if (!file) {
-        billStatus.innerHTML = '<span style="color: #e74c3c;">❌ Please select a bill or receipt file (PDF, Image, CSV) first.</span>';
+        billStatus.innerHTML = '<span style="color: #e74c3c;">❌ Please select a receipt file (PDF, Image, CSV) first.</span>';
         return;
     }
 
@@ -658,26 +535,26 @@ async function sendBillPayload(payload) {
             var item = items[i];
             if (item.name && Number(item.amount) > 0) {
                 var newExpense = {
-                    name: item.name,
-                    amount: Number(item.amount),
+                    userId:   currentUser.uid,
+                    name:     item.name,
+                    amount:   Number(item.amount),
                     category: item.category || "Other",
-                    date: now.toLocaleDateString(),
-                    month: now.getMonth(),
-                    year: now.getFullYear()
+                    date:     now.toLocaleDateString(),
+                    month:    now.getMonth(),
+                    year:     now.getFullYear()
                 };
                 promises.push(db.collection("expenses").add(newExpense));
             }
         }
 
         await Promise.all(promises);
-
         billStatus.innerHTML = '<span style="color: #27ae60;">✅ Successfully extracted & saved ' + promises.length + ' expenses from bill!</span>';
         billFileInput.value = "";
         loadExpenses();
 
     } catch (error) {
         console.error("Error sending bill payload:", error);
-        billStatus.innerHTML = '<span style="color: #e74c3c;">❌ Failed to process bill. Please make sure file is clear.</span>';
+        billStatus.innerHTML = '<span style="color: #e74c3c;">❌ Failed to process bill file.</span>';
     }
 
     resetScanButton();
