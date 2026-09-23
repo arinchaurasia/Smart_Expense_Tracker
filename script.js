@@ -1,28 +1,48 @@
 /*
     Smart Expense Tracker
-    Features: Add/Delete expenses, Monthly summary, Budget tracking, Gemini AI tips
-    Storage: localStorage (browser)
+    - Firebase Firestore for storing expenses
+    - Gemini API for AI spending advice
+    - localStorage for budget settings
 */
 
 
 // ========================
-//  Grabbing HTML Elements
+//  Firebase Setup
 // ========================
 
-// Form inputs
-var expenseName     = document.getElementById("expenseName");
-var expenseAmount   = document.getElementById("expenseAmount");
-var expenseCategory = document.getElementById("expenseCategory");
+var firebaseConfig = {
+    apiKey: "AIzaSyDr8VIsKWH22QPz2u-qPToW5acqS2UcIqU",
+    authDomain: "smart-expense-tracker-fbd0a.firebaseapp.com",
+    projectId: "smart-expense-tracker-fbd0a",
+    storageBucket: "smart-expense-tracker-fbd0a.firebasestorage.app",
+    messagingSenderId: "195030864438",
+    appId: "1:195030864438:web:eadf6301b7a9f3ffccbe97"
+};
+
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+
+// Gemini API Key is entered by the user in the UI and stored safely in localStorage
+
+
+// ========================
+//  HTML Elements
+// ========================
+
+// Form
+var expenseName      = document.getElementById("expenseName");
+var expenseAmount    = document.getElementById("expenseAmount");
+var expenseCategory  = document.getElementById("expenseCategory");
 var addExpenseButton = document.getElementById("addExpenseButton");
 
-// Display areas
-var expenseList      = document.getElementById("expenseList");
-var totalExpense     = document.getElementById("totalExpense");
-var totalCount       = document.getElementById("totalCount");
-var monthlyTotal     = document.getElementById("monthlyTotal");
-var currentMonth     = document.getElementById("currentMonth");
+// Display
+var expenseList       = document.getElementById("expenseList");
+var totalExpense      = document.getElementById("totalExpense");
+var totalCount        = document.getElementById("totalCount");
+var monthlyTotal      = document.getElementById("monthlyTotal");
+var currentMonth      = document.getElementById("currentMonth");
 var categoryBreakdown = document.getElementById("categoryBreakdown");
-var emptyMessage     = document.getElementById("emptyMessage");
+var emptyMessage      = document.getElementById("emptyMessage");
 
 // Filter
 var filterCategory = document.getElementById("filterCategory");
@@ -36,7 +56,7 @@ var budgetRemaining  = document.getElementById("budgetRemaining");
 var progressBarFill  = document.getElementById("progressBarFill");
 var budgetPercentage = document.getElementById("budgetPercentage");
 
-// Gemini AI
+// AI Tips & API Key
 var geminiApiKey     = document.getElementById("geminiApiKey");
 var saveApiKeyButton = document.getElementById("saveApiKeyButton");
 var getAiTipsButton  = document.getElementById("getAiTipsButton");
@@ -77,7 +97,7 @@ getAiTipsButton.addEventListener("click", getAiTips);
 
 
 // ========================
-//  Load saved data on page open
+//  Load Data on Page Open
 // ========================
 
 loadExpenses();
@@ -86,23 +106,95 @@ loadApiKey();
 
 
 // ========================
-//  Storage Functions
+//  Firebase: Load Expenses
 // ========================
 
 function loadExpenses() {
-    var saved = localStorage.getItem("expenses");
+    db.collection("expenses").get().then(function(snapshot) {
 
-    allExpenses = saved ? JSON.parse(saved) : [];
+        allExpenses = [];
 
-    filterCategory.value = "All";
-    displayExpenses(allExpenses);
-    updateMonthlySummary();
-    updateBudgetProgress();
+        snapshot.forEach(function(doc) {
+            var expense = doc.data();
+            expense.id = doc.id;
+            allExpenses.push(expense);
+        });
+
+        filterCategory.value = "All";
+        displayExpenses(allExpenses);
+        updateMonthlySummary();
+        updateBudgetProgress();
+
+    }).catch(function(error) {
+        console.log("Error loading expenses:", error);
+    });
 }
 
-function saveExpenses() {
-    localStorage.setItem("expenses", JSON.stringify(allExpenses));
+
+// ========================
+//  Firebase: Add Expense
+// ========================
+
+function addExpense() {
+    var name     = expenseName.value.trim();
+    var amount   = Number(expenseAmount.value);
+    var category = expenseCategory.value;
+
+    if (!name || amount <= 0 || !category) {
+        alert("Please fill all fields with valid values.");
+        return;
+    }
+
+    var now = new Date();
+
+    var newExpense = {
+        name:     name,
+        amount:   amount,
+        category: category,
+        date:     now.toLocaleDateString(),
+        month:    now.getMonth(),
+        year:     now.getFullYear()
+    };
+
+    // Save to Firebase
+    db.collection("expenses").add(newExpense).then(function() {
+
+        // Clear form
+        expenseName.value     = "";
+        expenseAmount.value   = "";
+        expenseCategory.value = "";
+
+        // Reload expenses from Firebase
+        loadExpenses();
+
+    }).catch(function(error) {
+        console.log("Error adding expense:", error);
+        alert("Failed to add expense. Check console.");
+    });
 }
+
+
+// ========================
+//  Firebase: Delete Expense
+// ========================
+
+function deleteExpense(id) {
+    if (!confirm("Delete this expense?")) {
+        return;
+    }
+
+    db.collection("expenses").doc(id).delete().then(function() {
+        loadExpenses();
+    }).catch(function(error) {
+        console.log("Error deleting expense:", error);
+        alert("Failed to delete expense.");
+    });
+}
+
+
+// ========================
+//  Budget (localStorage)
+// ========================
 
 function loadBudget() {
     var saved = localStorage.getItem("monthlyBudget");
@@ -124,10 +216,15 @@ function saveBudget() {
     updateBudgetProgress();
 }
 
+
+// ========================
+//  Gemini API Key (localStorage)
+// ========================
+
 function loadApiKey() {
-    var saved = localStorage.getItem("geminiApiKey");
-    if (saved) {
-        geminiApiKey.value = saved;
+    var savedKey = localStorage.getItem("geminiApiKey");
+    if (savedKey) {
+        geminiApiKey.value = savedKey;
     }
 }
 
@@ -135,84 +232,12 @@ function saveApiKey() {
     var key = geminiApiKey.value.trim();
 
     if (!key) {
-        alert("Please enter a valid API key.");
+        alert("Please enter a valid Gemini API Key.");
         return;
     }
 
     localStorage.setItem("geminiApiKey", key);
-    alert("API key saved!");
-}
-
-
-// ========================
-//  Add Expense
-// ========================
-
-function addExpense() {
-    var name     = expenseName.value.trim();
-    var amount   = Number(expenseAmount.value);
-    var category = expenseCategory.value;
-
-    // Check all fields are filled
-    if (!name || amount <= 0 || !category) {
-        alert("Please fill all fields with valid values.");
-        return;
-    }
-
-    var now = new Date();
-
-    // Create expense object and add to array
-    var newExpense = {
-        id:       Date.now(),
-        name:     name,
-        amount:   amount,
-        category: category,
-        date:     now.toLocaleDateString(),
-        month:    now.getMonth(),
-        year:     now.getFullYear()
-    };
-
-    allExpenses.push(newExpense);
-    saveExpenses();
-
-    // Clear form
-    expenseName.value     = "";
-    expenseAmount.value   = "";
-    expenseCategory.value = "";
-
-    // Refresh UI
-    filterCategory.value = "All";
-    displayExpenses(allExpenses);
-    updateMonthlySummary();
-    updateBudgetProgress();
-}
-
-
-// ========================
-//  Delete Expense
-// ========================
-
-function deleteExpense(id) {
-    if (!confirm("Delete this expense?")) {
-        return;
-    }
-
-    // Keep everything except the one we want to delete
-    var updated = [];
-    for (var i = 0; i < allExpenses.length; i++) {
-        if (allExpenses[i].id !== id) {
-            updated.push(allExpenses[i]);
-        }
-    }
-
-    allExpenses = updated;
-    saveExpenses();
-
-    // Refresh UI
-    filterCategory.value = "All";
-    displayExpenses(allExpenses);
-    updateMonthlySummary();
-    updateBudgetProgress();
+    alert("Gemini API Key saved locally in your browser! 🔒");
 }
 
 
@@ -246,20 +271,15 @@ function filterExpenses() {
 function displayExpenses(expenses) {
     expenseList.innerHTML = "";
 
-    // Calculate total
     var total = 0;
     for (var i = 0; i < expenses.length; i++) {
         total += expenses[i].amount;
     }
 
-    // Update summary numbers
     totalExpense.innerText = "₹" + total;
     totalCount.innerText   = expenses.length;
-
-    // Toggle empty message
     emptyMessage.style.display = (expenses.length === 0) ? "block" : "none";
 
-    // Create a card for each expense
     for (var i = 0; i < expenses.length; i++) {
         createExpenseCard(expenses[i]);
     }
@@ -272,7 +292,6 @@ function displayExpenses(expenses) {
 
 function createExpenseCard(expense) {
 
-    // Main row
     var item = document.createElement("div");
     item.className = "expense-item";
 
@@ -301,7 +320,6 @@ function createExpenseCard(expense) {
     delBtn.innerText = "Delete";
     delBtn.className = "delete-button";
 
-    // We wrap in a self-calling function to lock in the correct ID
     delBtn.addEventListener("click", (function(id) {
         return function() {
             deleteExpense(id);
@@ -311,7 +329,6 @@ function createExpenseCard(expense) {
     right.appendChild(amount);
     right.appendChild(delBtn);
 
-    // Put it all together
     item.appendChild(info);
     item.appendChild(right);
     expenseList.appendChild(item);
@@ -319,11 +336,11 @@ function createExpenseCard(expense) {
 
 
 // ========================
-//  Helper: Get This Month's Expenses
+//  Helper: This Month's Expenses
 // ========================
 
 function getCurrentMonthExpenses() {
-    var now = new Date();
+    var now       = new Date();
     var thisMonth = now.getMonth();
     var thisYear  = now.getFullYear();
     var result    = [];
@@ -339,7 +356,7 @@ function getCurrentMonthExpenses() {
 
 
 // ========================
-//  Helper: Get Category Totals
+//  Helper: Category Totals
 // ========================
 
 function getCategoryTotals(expenses) {
@@ -364,20 +381,17 @@ function updateMonthlySummary() {
 
     var monthExpenses = getCurrentMonthExpenses();
 
-    // Calculate month total
     var monthTotal = 0;
     for (var i = 0; i < monthExpenses.length; i++) {
         monthTotal += monthExpenses[i].amount;
     }
     monthlyTotal.innerText = "₹" + monthTotal;
 
-    // No expenses? Show empty message
     if (monthExpenses.length === 0) {
         categoryBreakdown.innerHTML = '<p class="empty-message">No expenses this month yet.</p>';
         return;
     }
 
-    // Build category-wise bars
     var catTotals  = getCategoryTotals(monthExpenses);
     var categories = Object.keys(catTotals);
     var html = "";
@@ -415,13 +429,11 @@ function updateMonthlySummary() {
 function updateBudgetProgress() {
     var budget = Number(localStorage.getItem("monthlyBudget"));
 
-    // No budget set? Hide the progress bar
     if (!budget || budget <= 0) {
         budgetProgress.style.display = "none";
         return;
     }
 
-    // Calculate how much spent this month
     var monthExpenses = getCurrentMonthExpenses();
     var spent = 0;
     for (var i = 0; i < monthExpenses.length; i++) {
@@ -431,11 +443,9 @@ function updateBudgetProgress() {
     var remaining = budget - spent;
     var percent   = Math.round((spent / budget) * 100);
 
-    // Show progress section
     budgetProgress.style.display = "block";
     budgetSpent.innerText = "₹" + spent + " spent";
 
-    // Remaining or over budget text
     if (remaining >= 0) {
         budgetRemaining.innerText = "₹" + remaining + " remaining";
         budgetRemaining.style.color = "#27ae60";
@@ -444,11 +454,9 @@ function updateBudgetProgress() {
         budgetRemaining.style.color = "#e74c3c";
     }
 
-    // Progress bar width (max 100% visually)
     progressBarFill.style.width = Math.min(percent, 100) + "%";
     progressBarFill.className = "progress-bar-fill";
 
-    // Color and text based on usage
     if (percent > 100) {
         progressBarFill.classList.add("over-budget");
         budgetPercentage.innerText = "⚠️ " + percent + "% used — Over budget!";
@@ -469,22 +477,18 @@ function buildPrompt() {
     var monthExpenses = getCurrentMonthExpenses();
     var budget = Number(localStorage.getItem("monthlyBudget")) || 0;
 
-    // Monthly total
     var monthTotal = 0;
     for (var i = 0; i < monthExpenses.length; i++) {
         monthTotal += monthExpenses[i].amount;
     }
 
-    // Category breakdown
     var catTotals  = getCategoryTotals(monthExpenses);
     var categories = Object.keys(catTotals);
 
-    // Days left in month
-    var now        = new Date();
+    var now         = new Date();
     var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    var daysLeft   = daysInMonth - now.getDate();
+    var daysLeft    = daysInMonth - now.getDate();
 
-    // Build the prompt string
     var prompt = "You are a personal finance advisor. Analyze my monthly expenses and give me a smart spending plan.\n\n"
         + "Month: " + monthNames[now.getMonth()] + " " + now.getFullYear() + "\n"
         + "Days left in month: " + daysLeft + "\n"
@@ -512,10 +516,10 @@ function buildPrompt() {
 // ========================
 
 async function getAiTips() {
-    var apiKey = localStorage.getItem("geminiApiKey");
+    var apiKey = geminiApiKey.value.trim() || localStorage.getItem("geminiApiKey");
 
     if (!apiKey) {
-        alert("Please enter and save your Gemini API key first.");
+        spendingTips.innerHTML = '<div class="ai-error">🔑 Please enter your Gemini API Key in the field above and click Save.</div>';
         return;
     }
 
@@ -526,14 +530,13 @@ async function getAiTips() {
         return;
     }
 
-    // Show loading state
+    // Show loading
     getAiTipsButton.disabled = true;
     getAiTipsButton.innerText = "Analyzing...";
     spendingTips.innerHTML = '<div class="ai-loading"><span class="spinner"></span>Gemini is analyzing your expenses...</div>';
 
-    // Prepare API request
     var prompt = buildPrompt();
-    var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey;
+    var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + encodeURIComponent(apiKey);
 
     var requestBody = {
         contents: [
@@ -546,7 +549,6 @@ async function getAiTips() {
     };
 
     try {
-        // Call Gemini API
         var response = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -555,7 +557,6 @@ async function getAiTips() {
 
         var data = await response.json();
 
-        // Handle API errors
         if (!response.ok) {
             var errorMsg = (data.error && data.error.message)
                 ? data.error.message
@@ -566,13 +567,12 @@ async function getAiTips() {
             return;
         }
 
-        // Show AI response
         var aiText = data.candidates[0].content.parts[0].text;
         spendingTips.innerHTML = '<div class="tip-card">' + formatAiResponse(aiText) + '</div>';
 
     } catch (error) {
         console.log("Gemini API error:", error);
-        spendingTips.innerHTML = '<div class="ai-error">❌ Failed to connect. Check your API key and internet.</div>';
+        spendingTips.innerHTML = '<div class="ai-error">❌ Failed to connect. Check your internet connection.</div>';
     }
 
     resetAiButton();
@@ -585,7 +585,7 @@ function resetAiButton() {
 
 
 // ========================
-//  Format Gemini Response
+//  Format AI Response
 // ========================
 
 function formatAiResponse(text) {

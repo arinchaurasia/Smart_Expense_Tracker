@@ -1,16 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Expense Tracker</title>
-    <meta name="description" content="AI-powered expense tracker for smart spending advice.">
+    <meta name="description" content="AI-powered expense tracker with Firebase and Gemini API.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
     <div class="container">
@@ -65,6 +63,14 @@
         <div class="plan-container">
             <h2>🎯 AI Spending Plan</h2>
 
+            <div class="api-key-row">
+                <label for="geminiApiKey">🔑 Gemini API Key (saved in browser, kept private):</label>
+                <div class="budget-input-group">
+                    <input type="password" id="geminiApiKey" placeholder="Paste your Gemini API Key here">
+                    <button id="saveApiKeyButton">Save Key</button>
+                </div>
+            </div>
+
             <div class="budget-row">
                 <label for="monthlyBudget">Set Monthly Budget:</label>
                 <div class="budget-input-group">
@@ -82,14 +88,6 @@
                     <div class="progress-bar-fill" id="progressBarFill"></div>
                 </div>
                 <p id="budgetPercentage" class="budget-percentage"></p>
-            </div>
-
-            <div class="api-key-row">
-                <label for="geminiApiKey">Gemini API Key:</label>
-                <div class="budget-input-group">
-                    <input type="password" id="geminiApiKey" placeholder="Paste your Gemini API key">
-                    <button id="saveApiKeyButton">Save</button>
-                </div>
             </div>
 
             <button id="getAiTipsButton" class="ai-button">✨ Get AI Advice</button>
@@ -119,7 +117,12 @@
 
     </div>
 
-    <script src="script.js"></script>
-</body>
+    <!-- Firebase SDK (compat version — works without module imports) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
+    <!-- Our JavaScript -->
+    <script src="script.js"></script>
+
+</body>
 </html>
