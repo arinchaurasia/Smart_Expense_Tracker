@@ -42,7 +42,7 @@ Do NOT include markdown formatting or extra commentary outside the JSON array.`;
             return res.status(400).json({ error: "No file or text content provided." });
         }
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
 
         const response = await fetch(url, {
             method: "POST",
