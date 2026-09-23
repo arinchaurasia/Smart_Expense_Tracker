@@ -620,7 +620,8 @@ function importCsvFile() {
             var line = lines[i].trim();
             if (!line) continue;
 
-            var cols = line.split(",").map(function(item) {
+            var delimiter = line.includes("\t") ? "\t" : (line.includes(";") ? ";" : ",");
+            var cols = line.split(delimiter).map(function(item) {
                 return item.replace(/^["']|["']$/g, "").trim();
             });
 
