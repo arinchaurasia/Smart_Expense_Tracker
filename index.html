@@ -50,6 +50,17 @@
             <button id="addExpenseButton">Add Expense</button>
         </div>
 
+        <!-- CSV Upload & AI Auto-Categorize -->
+        <div class="csv-container">
+            <h2>📁 Import CSV (AI Auto-Categorize)</h2>
+            <p class="csv-desc">Upload a CSV file (e.g. <code>Description, Amount, Date</code>). Smart AI will auto-categorize & add them!</p>
+            <div class="csv-upload-group">
+                <input type="file" id="csvFileInput" accept=".csv">
+                <button id="importCsvButton" class="csv-button">✨ Import & Auto-Categorize</button>
+            </div>
+            <div id="csvStatus"></div>
+        </div>
+
         <!-- Monthly Summary -->
         <div class="monthly-summary-container">
             <h2>📊 Monthly Summary</h2>

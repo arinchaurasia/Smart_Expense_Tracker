@@ -58,6 +58,11 @@ var budgetPercentage = document.getElementById("budgetPercentage");
 var getAiTipsButton  = document.getElementById("getAiTipsButton");
 var spendingTips     = document.getElementById("spendingTips");
 
+// CSV Import
+var csvFileInput    = document.getElementById("csvFileInput");
+var importCsvButton = document.getElementById("importCsvButton");
+var csvStatus       = document.getElementById("csvStatus");
+
 
 // ========================
 //  App Data
@@ -89,6 +94,7 @@ addExpenseButton.addEventListener("click", addExpense);
 filterCategory.addEventListener("change", filterExpenses);
 saveBudgetButton.addEventListener("click", saveBudget);
 getAiTipsButton.addEventListener("click", getAiTips);
+importCsvButton.addEventListener("click", importCsvFile);
 
 
 // ========================
@@ -545,4 +551,134 @@ function formatAiResponse(text) {
     text = text.replace(/##\s?(.*)/g, "<strong>$1</strong>");
     text = text.replace(/\n/g, "<br>");
     return text;
+}
+
+
+// ========================
+//  CSV Import & AI Auto-Categorization
+// ========================
+
+function autoCategorizeExpense(name, category) {
+    if (category && category.trim().length > 0) {
+        var catLower = category.trim().toLowerCase();
+        if (catLower.includes("food") || catLower.includes("dining")) return "Food";
+        if (catLower.includes("trans") || catLower.includes("travel") || catLower.includes("ride")) return "Transport";
+        if (catLower.includes("shop") || catLower.includes("store")) return "Shopping";
+        if (catLower.includes("edu") || catLower.includes("book") || catLower.includes("course")) return "Education";
+        if (catLower.includes("ent") || catLower.includes("movie") || catLower.includes("music")) return "Entertainment";
+        if (catLower.includes("bill") || catLower.includes("util") || catLower.includes("recharge")) return "Bills";
+    }
+
+    var lower = name.toLowerCase();
+
+    // Food
+    if (/zomato|swiggy|burger|pizza|mcdonalds|kfc|starbucks|cafe|restaurant|lunch|dinner|breakfast|food|grocery|supermarket|bakery|dunkin|dominos/i.test(lower)) {
+        return "Food";
+    }
+    // Transport
+    if (/uber|ola|rapido|cab|taxi|metro|bus|train|flight|airline|petrol|fuel|shell|toll|parking|transport|auto|railway/i.test(lower)) {
+        return "Transport";
+    }
+    // Shopping
+    if (/amazon|flipkart|myntra|zara|h&m|uniqlo|clothes|shoes|apparel|electronics|mall|shopping|nike|adidas/i.test(lower)) {
+        return "Shopping";
+    }
+    // Education
+    if (/udemy|coursera|edx|book|tuition|exam|college|school|fee|stationery|course|class|academy/i.test(lower)) {
+        return "Education";
+    }
+    // Entertainment
+    if (/netflix|spotify|prime|hotstar|movie|cinema|inox|pvr|game|playstation|xbox|steam|concert|event|ticket/i.test(lower)) {
+        return "Entertainment";
+    }
+    // Bills
+    if (/electricity|power|wifi|broadband|internet|recharge|jio|airtel|vi|vodafone|water|rent|gas|bill|maintenance|lic|insurance|premium/i.test(lower)) {
+        return "Bills";
+    }
+
+    return "Other";
+}
+
+function importCsvFile() {
+    var file = csvFileInput.files[0];
+
+    if (!file) {
+        csvStatus.innerHTML = '<span style="color: #e74c3c;">❌ Please select a CSV file first.</span>';
+        return;
+    }
+
+    var reader = new FileReader();
+
+    reader.onload = function(e) {
+        var text = e.target.result;
+        var lines = text.split(/\r?\n/);
+        var addedCount = 0;
+        var promises = [];
+        var now = new Date();
+
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            if (!line) continue;
+
+            var cols = line.split(",").map(function(item) {
+                return item.replace(/^["']|["']$/g, "").trim();
+            });
+
+            if (i === 0 && (cols[0].toLowerCase().includes("date") || cols[0].toLowerCase().includes("name") || cols[0].toLowerCase().includes("desc"))) {
+                continue;
+            }
+
+            var name = "";
+            var amount = 0;
+            var rawCategory = "";
+
+            if (cols.length === 1) continue;
+
+            if (cols.length >= 3 && !isNaN(Number(cols[2]))) {
+                name = cols[1];
+                amount = Number(cols[2]);
+                rawCategory = cols[0];
+            } else if (cols.length >= 2 && !isNaN(Number(cols[1]))) {
+                name = cols[0];
+                amount = Number(cols[1]);
+                if (cols[2]) rawCategory = cols[2];
+            } else if (cols.length >= 2 && !isNaN(Number(cols[0]))) {
+                amount = Number(cols[0]);
+                name = cols[1];
+            }
+
+            if (name && amount > 0) {
+                var assignedCategory = autoCategorizeExpense(name, rawCategory);
+                var newExpense = {
+                    name: name,
+                    amount: amount,
+                    category: assignedCategory,
+                    date: now.toLocaleDateString(),
+                    month: now.getMonth(),
+                    year: now.getFullYear()
+                };
+
+                promises.push(db.collection("expenses").add(newExpense));
+                addedCount++;
+            }
+        }
+
+        if (addedCount === 0) {
+            csvStatus.innerHTML = '<span style="color: #e74c3c;">❌ No valid expense rows found in CSV.</span>';
+            return;
+        }
+
+        csvStatus.innerHTML = '<span style="color: #27ae60;">⏳ Importing & Auto-Categorizing ' + addedCount + ' expenses...</span>';
+
+        Promise.all(promises).then(function() {
+            csvStatus.innerHTML = '<span style="color: #27ae60;">✅ Successfully imported ' + addedCount + ' expenses with AI auto-categorization!</span>';
+            csvFileInput.value = "";
+            loadExpenses();
+        }).catch(function(err) {
+            console.error("Error batch importing CSV:", err);
+            csvStatus.innerHTML = '<span style="color: #e74c3c;">❌ Failed to save expenses to database.</span>';
+        });
+    };
+
+    reader.readAsText(file);
 }

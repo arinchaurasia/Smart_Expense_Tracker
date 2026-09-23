@@ -94,6 +94,55 @@ h1 {
     color: #333;
 }
 
+/* CSV Upload Container */
+.csv-container {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.csv-container h2 {
+    font-size: 18px;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.csv-desc {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.csv-desc code {
+    background: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+.csv-upload-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.csv-button {
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    color: white;
+}
+
+.csv-button:hover {
+    opacity: 0.92;
+}
+
+.csv-status {
+    margin-top: 12px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
 input,
 select {
     width: 100%;
