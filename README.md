@@ -65,7 +65,7 @@ When you click "Get AI Advice", the app:
 
 The API call uses `fetch()` to send a POST request to:
 ```
-https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
+https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent
 ```
 
 
