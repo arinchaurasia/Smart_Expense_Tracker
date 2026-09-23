@@ -22,8 +22,6 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.firestore();
 
-// Gemini API Key is entered by the user in the UI and stored safely in localStorage
-
 
 // ========================
 //  HTML Elements
