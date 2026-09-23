@@ -50,15 +50,15 @@
             <button id="addExpenseButton">Add Expense</button>
         </div>
 
-        <!-- CSV Upload & AI Auto-Categorize -->
+        <!-- Smart Bill & Document Scanner (PDF, Image, CSV) -->
         <div class="csv-container">
-            <h2>📁 Import CSV (AI Auto-Categorize)</h2>
-            <p class="csv-desc">Upload a CSV file (e.g. <code>Description, Amount, Date</code>). Smart AI will auto-categorize & add them!</p>
+            <h2>📄 Smart Bill & Receipt Scanner (AI Auto-Extract)</h2>
+            <p class="csv-desc">Upload any bill/receipt — <strong>PDF document, Receipt Image (PNG/JPG), or CSV</strong>. Gemini AI auto-reads amounts & categories!</p>
             <div class="csv-upload-group">
-                <input type="file" id="csvFileInput" accept=".csv">
-                <button id="importCsvButton" class="csv-button">✨ Import & Auto-Categorize</button>
+                <input type="file" id="billFileInput" accept=".pdf, .png, .jpg, .jpeg, .csv, .txt">
+                <button id="scanBillButton" class="csv-button">✨ Scan & Auto-Extract with AI</button>
             </div>
-            <div id="csvStatus"></div>
+            <div id="billStatus" class="csv-status"></div>
         </div>
 
         <!-- Monthly Summary -->

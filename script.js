@@ -58,10 +58,10 @@ var budgetPercentage = document.getElementById("budgetPercentage");
 var getAiTipsButton  = document.getElementById("getAiTipsButton");
 var spendingTips     = document.getElementById("spendingTips");
 
-// CSV Import
-var csvFileInput    = document.getElementById("csvFileInput");
-var importCsvButton = document.getElementById("importCsvButton");
-var csvStatus       = document.getElementById("csvStatus");
+// Bill & Document Scanner
+var billFileInput  = document.getElementById("billFileInput");
+var scanBillButton = document.getElementById("scanBillButton");
+var billStatus     = document.getElementById("billStatus");
 
 
 // ========================
@@ -94,7 +94,7 @@ addExpenseButton.addEventListener("click", addExpense);
 filterCategory.addEventListener("change", filterExpenses);
 saveBudgetButton.addEventListener("click", saveBudget);
 getAiTipsButton.addEventListener("click", getAiTips);
-importCsvButton.addEventListener("click", importCsvFile);
+scanBillButton.addEventListener("click", scanBillFile);
 
 
 // ========================
@@ -599,87 +599,91 @@ function autoCategorizeExpense(name, category) {
     return "Other";
 }
 
-function importCsvFile() {
-    var file = csvFileInput.files[0];
+async function scanBillFile() {
+    var file = billFileInput.files[0];
 
     if (!file) {
-        csvStatus.innerHTML = '<span style="color: #e74c3c;">❌ Please select a CSV file first.</span>';
+        billStatus.innerHTML = '<span style="color: #e74c3c;">❌ Please select a bill or receipt file (PDF, Image, CSV) first.</span>';
         return;
     }
 
+    scanBillButton.disabled = true;
+    scanBillButton.innerText = "Scanning with Gemini AI...";
+    billStatus.innerHTML = '<span style="color: #667eea;">⏳ Gemini AI is analyzing your bill... Please wait.</span>';
+
     var reader = new FileReader();
+    var fileType = file.type || "";
+    var isTextOrCsv = file.name.endsWith(".csv") || file.name.endsWith(".txt") || fileType.includes("text") || fileType.includes("csv");
 
-    reader.onload = function(e) {
-        var text = e.target.result;
-        var lines = text.split(/\r?\n/);
-        var addedCount = 0;
-        var promises = [];
-        var now = new Date();
-
-        for (var i = 0; i < lines.length; i++) {
-            var line = lines[i].trim();
-            if (!line) continue;
-
-            var delimiter = line.includes("\t") ? "\t" : (line.includes(";") ? ";" : ",");
-            var cols = line.split(delimiter).map(function(item) {
-                return item.replace(/^["']|["']$/g, "").trim();
+    if (isTextOrCsv) {
+        reader.onload = function(e) {
+            sendBillPayload({ textContent: e.target.result });
+        };
+        reader.readAsText(file);
+    } else {
+        reader.onload = function(e) {
+            var dataUrl = e.target.result;
+            var base64Data = dataUrl.split(",")[1];
+            sendBillPayload({
+                mimeType: fileType || (file.name.endsWith(".pdf") ? "application/pdf" : "image/jpeg"),
+                fileData: base64Data
             });
+        };
+        reader.readAsDataURL(file);
+    }
+}
 
-            if (i === 0 && (cols[0].toLowerCase().includes("date") || cols[0].toLowerCase().includes("name") || cols[0].toLowerCase().includes("desc"))) {
-                continue;
-            }
+async function sendBillPayload(payload) {
+    try {
+        var response = await fetch("/api/scan-bill", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
 
-            var name = "";
-            var amount = 0;
-            var rawCategory = "";
+        var data = await response.json();
 
-            if (cols.length === 1) continue;
+        if (!response.ok || !data.items || data.items.length === 0) {
+            var errorMsg = (data && data.error) ? data.error : "Could not extract expenses from this file.";
+            billStatus.innerHTML = '<span style="color: #e74c3c;">❌ ' + errorMsg + '</span>';
+            resetScanButton();
+            return;
+        }
 
-            if (cols.length >= 3 && !isNaN(Number(cols[2]))) {
-                name = cols[1];
-                amount = Number(cols[2]);
-                rawCategory = cols[0];
-            } else if (cols.length >= 2 && !isNaN(Number(cols[1]))) {
-                name = cols[0];
-                amount = Number(cols[1]);
-                if (cols[2]) rawCategory = cols[2];
-            } else if (cols.length >= 2 && !isNaN(Number(cols[0]))) {
-                amount = Number(cols[0]);
-                name = cols[1];
-            }
+        var now = new Date();
+        var promises = [];
+        var items = data.items;
 
-            if (name && amount > 0) {
-                var assignedCategory = autoCategorizeExpense(name, rawCategory);
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            if (item.name && Number(item.amount) > 0) {
                 var newExpense = {
-                    name: name,
-                    amount: amount,
-                    category: assignedCategory,
+                    name: item.name,
+                    amount: Number(item.amount),
+                    category: item.category || "Other",
                     date: now.toLocaleDateString(),
                     month: now.getMonth(),
                     year: now.getFullYear()
                 };
-
                 promises.push(db.collection("expenses").add(newExpense));
-                addedCount++;
             }
         }
 
-        if (addedCount === 0) {
-            csvStatus.innerHTML = '<span style="color: #e74c3c;">❌ No valid expense rows found in CSV.</span>';
-            return;
-        }
+        await Promise.all(promises);
 
-        csvStatus.innerHTML = '<span style="color: #27ae60;">⏳ Importing & Auto-Categorizing ' + addedCount + ' expenses...</span>';
+        billStatus.innerHTML = '<span style="color: #27ae60;">✅ Successfully extracted & saved ' + promises.length + ' expenses from bill!</span>';
+        billFileInput.value = "";
+        loadExpenses();
 
-        Promise.all(promises).then(function() {
-            csvStatus.innerHTML = '<span style="color: #27ae60;">✅ Successfully imported ' + addedCount + ' expenses with AI auto-categorization!</span>';
-            csvFileInput.value = "";
-            loadExpenses();
-        }).catch(function(err) {
-            console.error("Error batch importing CSV:", err);
-            csvStatus.innerHTML = '<span style="color: #e74c3c;">❌ Failed to save expenses to database.</span>';
-        });
-    };
+    } catch (error) {
+        console.error("Error sending bill payload:", error);
+        billStatus.innerHTML = '<span style="color: #e74c3c;">❌ Failed to process bill. Please make sure file is clear.</span>';
+    }
 
-    reader.readAsText(file);
+    resetScanButton();
+}
+
+function resetScanButton() {
+    scanBillButton.disabled = false;
+    scanBillButton.innerText = "✨ Scan & Auto-Extract with AI";
 }

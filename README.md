@@ -132,11 +132,12 @@ I kept it with localStorage for now because it works instantly without any setup
 ```
 Smart_Expense_Tracker/
 ├── api/
-│   └── advice.js  → Vercel Serverless Function (secure Gemini proxy)
-├── index.html     → Page structure (form, cards, sections)
-├── style.css      → All styling (gradient, cards, responsive)
-├── script.js      → All logic (CRUD, summary, Gemini API)
-└── README.md      → This file
+│   ├── advice.js     → Vercel Serverless Function (secure Gemini proxy)
+│   └── scan-bill.js  → Multimodal Gemini AI scanner (PDF, Receipt Images, CSV)
+├── index.html        → Page structure (form, cards, sections)
+├── style.css         → All styling (gradient, cards, responsive)
+├── script.js         → All logic (CRUD, summary, Gemini API, file upload)
+└── README.md         → This file
 ```
 
 
