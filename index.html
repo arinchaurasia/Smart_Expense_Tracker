@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Expense Tracker</title>
+    <meta name="description" content="AI-powered expense tracker for smart spending advice.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>💰 Smart Expense Tracker</h1>
+        <p class="subtitle">Track expenses &amp; get AI-powered spending advice</p>
+
+        <!-- Summary Cards -->
+        <div class="summary">
+            <div class="summary-box">
+                <h3>Total Expenses</h3>
+                <p id="totalExpense">₹0</p>
+            </div>
+            <div class="summary-box">
+                <h3>This Month</h3>
+                <p id="monthlyTotal">₹0</p>
+            </div>
+            <div class="summary-box">
+                <h3>Total Entries</h3>
+                <p id="totalCount">0</p>
+            </div>
+        </div>
+
+        <!-- Add Expense Form -->
+        <div class="form-container">
+            <h2>➕ Add New Expense</h2>
+            <input type="text" id="expenseName" placeholder="Expense name (e.g., Lunch)">
+            <input type="number" id="expenseAmount" placeholder="Amount (e.g., 250)">
+            <select id="expenseCategory">
+                <option value="">Select Category</option>
+                <option value="Food">🍔 Food</option>
+                <option value="Transport">🚌 Transport</option>
+                <option value="Shopping">🛒 Shopping</option>
+                <option value="Education">📚 Education</option>
+                <option value="Entertainment">🎬 Entertainment</option>
+                <option value="Bills">💡 Bills</option>
+                <option value="Other">📦 Other</option>
+            </select>
+            <button id="addExpenseButton">Add Expense</button>
+        </div>
+
+        <!-- Monthly Summary -->
+        <div class="monthly-summary-container">
+            <h2>📊 Monthly Summary</h2>
+            <p id="currentMonth" class="current-month"></p>
+            <div id="categoryBreakdown">
+                <p class="empty-message">No expenses this month yet.</p>
+            </div>
+        </div>
+
+        <!-- AI Spending Plan -->
+        <div class="plan-container">
+            <h2>🎯 AI Spending Plan</h2>
+
+            <div class="budget-row">
+                <label for="monthlyBudget">Set Monthly Budget:</label>
+                <div class="budget-input-group">
+                    <input type="number" id="monthlyBudget" placeholder="e.g., 10000">
+                    <button id="saveBudgetButton">Save</button>
+                </div>
+            </div>
+
+            <div id="budgetProgress" class="budget-progress" style="display: none;">
+                <div class="progress-header">
+                    <span id="budgetSpent">₹0 spent</span>
+                    <span id="budgetRemaining">₹0 remaining</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="progressBarFill"></div>
+                </div>
+                <p id="budgetPercentage" class="budget-percentage"></p>
+            </div>
+
+            <div class="api-key-row">
+                <label for="geminiApiKey">Gemini API Key:</label>
+                <div class="budget-input-group">
+                    <input type="password" id="geminiApiKey" placeholder="Paste your Gemini API key">
+                    <button id="saveApiKeyButton">Save</button>
+                </div>
+            </div>
+
+            <button id="getAiTipsButton" class="ai-button">✨ Get AI Advice</button>
+
+            <div id="spendingTips"></div>
+        </div>
+
+        <!-- Filter & Expense List -->
+        <div class="filter-container">
+            <h2>📋 Your Expenses</h2>
+            <select id="filterCategory">
+                <option value="All">All Categories</option>
+                <option value="Food">🍔 Food</option>
+                <option value="Transport">🚌 Transport</option>
+                <option value="Shopping">🛒 Shopping</option>
+                <option value="Education">📚 Education</option>
+                <option value="Entertainment">🎬 Entertainment</option>
+                <option value="Bills">💡 Bills</option>
+                <option value="Other">📦 Other</option>
+            </select>
+        </div>
+
+        <div class="expense-container">
+            <div id="expenseList"></div>
+            <p id="emptyMessage" class="empty-message">No expenses added yet. Start by adding one above!</p>
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
